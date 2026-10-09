@@ -37,7 +37,7 @@ create index posts_publish_date_idx on public.posts (publish_date);
 create index posts_video_id_idx on public.posts (video_id);
 
 create function public.set_updated_at() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   new.updated_at = now();
   return new;
