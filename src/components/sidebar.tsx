@@ -27,14 +27,23 @@ export function Sidebar({ videos, posts }: { videos: Video[]; posts: Post[] }) {
 
   return (
     <aside className="flex w-80 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50/60">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-200 px-4">
-        <h2 className="text-sm font-semibold">Drive library</h2>
-        <span className="text-xs text-zinc-400 tabular-nums">
-          {visible.length}/{videos.length}
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-zinc-200 px-4">
+        <img src="/callcrew-mark.webp" alt="" width={28} height={28} />
+        <span className="text-sm font-bold tracking-wide text-[#243B53]">
+          CALLCREW
         </span>
+        <span className="text-sm text-zinc-400">Content calendar</span>
       </div>
 
       <div className="space-y-2 border-b border-zinc-200 p-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+            Drive library
+          </h2>
+          <span className="text-xs text-zinc-400 tabular-nums">
+            {visible.length}/{videos.length}
+          </span>
+        </div>
         <input
           type="search"
           value={query}

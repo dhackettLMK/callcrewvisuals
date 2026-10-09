@@ -8,7 +8,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Content calendar",
+  title: "CallCrew · Content calendar",
   description: "What video is going out, when, and on which platform.",
 };
 
