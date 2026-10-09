@@ -1,24 +1,35 @@
 "use client";
 
-import { useDroppable } from "@dnd-kit/core";
+import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { toISODate } from "@/lib/dates";
 import { PLATFORMS } from "@/lib/platforms";
 import type { Platform, Post, Video } from "@/lib/types";
-import type { SlotData } from "./planner";
+import type { DragData, DropData } from "./dnd";
+import { useFileDrop } from "./file-drop";
 import { PostCard } from "./post-card";
 
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+
+export type GridHandlers = {
+  onOpen: (postId: string) => void;
+  onAttach: (postId: string) => void;
+  onAdd: (slot: { date: string; platform: Platform }) => void;
+  onFiles: (files: File[], target: DropData) => void;
+};
 
 export function WeekGrid({
   days,
   today,
   posts,
-  videosById,
+  videoByPost,
+  handlers,
 }: {
   days: Date[];
   today: string;
+  /** Live (not deleted) placeholders. */
   posts: Post[];
-  videosById: Map<string, Video>;
+  videoByPost: Map<string, Video>;
+  handlers: GridHandlers;
 }) {
   const dates = days.map(toISODate);
 
@@ -55,7 +66,9 @@ export function WeekGrid({
               key={dates[i]}
               className="sticky top-0 z-20 flex items-baseline gap-1.5 border-b border-l border-zinc-200 bg-white px-2.5 py-2"
             >
-              <span className={`text-xs font-medium ${isToday ? "text-blue-600" : "text-zinc-500"}`}>
+              <span
+                className={`text-xs font-medium ${isToday ? "text-blue-600" : "text-zinc-500"}`}
+              >
                 {dayFmt.format(d)}
               </span>
               <span
@@ -73,106 +86,130 @@ export function WeekGrid({
 
         {/* One row per platform */}
         {PLATFORMS.map((platform) => (
-          <PlatformRow
-            key={platform.id}
-            platform={platform}
-            dates={dates}
-            today={today}
-            bySlot={bySlot}
-            videosById={videosById}
-          />
+          <div key={platform.id} className="contents">
+            <div
+              className="sticky left-0 z-10 flex items-start gap-2 border-b border-zinc-200 bg-white px-3 py-2.5"
+              style={{ boxShadow: `inset 3px 0 0 ${platform.color}` }}
+            >
+              <span
+                className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: platform.color }}
+              />
+              <span className="text-[13px] font-medium text-zinc-700">
+                {platform.label}
+              </span>
+            </div>
+            {dates.map((date) => (
+              <SlotCell
+                key={date}
+                date={date}
+                platform={platform.id}
+                color={platform.color}
+                isToday={date === today}
+                posts={bySlot.get(`${date}|${platform.id}`) ?? []}
+                videoByPost={videoByPost}
+                handlers={handlers}
+              />
+            ))}
+          </div>
         ))}
       </div>
     </div>
   );
 }
 
-function PlatformRow({
-  platform,
-  dates,
-  today,
-  bySlot,
-  videosById,
-}: {
-  platform: (typeof PLATFORMS)[number];
-  dates: string[];
-  today: string;
-  bySlot: Map<string, Post[]>;
-  videosById: Map<string, Video>;
-}) {
-  return (
-    <>
-      <div
-        className="sticky left-0 z-10 flex items-start gap-2 border-b border-zinc-200 bg-white px-3 py-2.5"
-        style={{ boxShadow: `inset 3px 0 0 ${platform.color}` }}
-      >
-        <span
-          className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ background: platform.color }}
-        />
-        <span className="text-[13px] font-medium text-zinc-700">{platform.label}</span>
-      </div>
-      {dates.map((date) => (
-        <Slot
-          key={date}
-          date={date}
-          platform={platform.id}
-          color={platform.color}
-          isToday={date === today}
-          posts={bySlot.get(`${date}|${platform.id}`) ?? []}
-          videosById={videosById}
-        />
-      ))}
-    </>
-  );
-}
-
-function Slot({
+function SlotCell({
   date,
   platform,
   color,
   isToday,
   posts,
-  videosById,
+  videoByPost,
+  handlers,
 }: {
   date: string;
   platform: Platform;
   color: string;
   isToday: boolean;
   posts: Post[];
-  videosById: Map<string, Video>;
+  videoByPost: Map<string, Video>;
+  handlers: GridHandlers;
 }) {
-  const data: SlotData = { date, platform };
+  const data: DropData = { kind: "slot", date, platform };
   const { setNodeRef, isOver } = useDroppable({
     id: `slot:${date}:${platform}`,
     data,
   });
+  const { active } = useDndContext();
+  const dragging = active?.data.current as DragData | undefined;
+  const { fileOver, fileDropProps } = useFileDrop((files) =>
+    handlers.onFiles(files, data),
+  );
+  const over = isOver || fileOver;
   const empty = posts.length === 0;
 
   return (
     <div
       ref={setNodeRef}
-      className={`relative min-h-32 border-b border-l border-zinc-200 p-1.5 transition-colors ${
+      {...fileDropProps}
+      className={`group relative min-h-32 border-b border-l border-zinc-200 p-1.5 transition-colors ${
         isToday ? "bg-blue-50/50" : "bg-white"
-      } ${empty ? "slot-empty" : ""
-      }`}
+      } ${empty ? "slot-empty" : ""}`}
       style={
-        isOver
-          ? { backgroundColor: `${color}14`, boxShadow: `inset 0 0 0 2px ${color}` }
+        over
+          ? {
+              backgroundColor: `${color}14`,
+              boxShadow: `inset 0 0 0 2px ${color}`,
+            }
           : undefined
       }
     >
+      <div className="flex flex-col gap-1.5">
+        {posts.map((p) => (
+          <PostCard
+            key={p.id}
+            post={p}
+            video={videoByPost.get(p.id)}
+            onOpen={() => handlers.onOpen(p.id)}
+            onAttach={() => handlers.onAttach(p.id)}
+            onFiles={(files) =>
+              handlers.onFiles(files, {
+                kind: "card",
+                postId: p.id,
+                date: p.publish_date,
+                platform: p.platform,
+              })
+            }
+          />
+        ))}
+      </div>
+
       {empty ? (
-        <div className="flex h-full min-h-28 items-center justify-center text-[11px] text-zinc-300">
-          {isOver ? "" : "Empty"}
-        </div>
+        <button
+          onClick={() => handlers.onAdd({ date, platform })}
+          className="flex h-full min-h-28 w-full items-center justify-center rounded text-[11px] text-zinc-300 outline-none hover:text-zinc-500 focus-visible:ring-2 focus-visible:ring-blue-500"
+          aria-label="Add placeholder"
+        >
+          {over ? (
+            dragging?.type === "post" ? (
+              "Move here"
+            ) : (
+              "Drop to add"
+            )
+          ) : (
+            <>
+              <span className="group-hover:hidden">Empty</span>
+              <span className="hidden group-hover:inline">+ Add</span>
+            </>
+          )}
+        </button>
       ) : (
-        <div className="flex flex-col gap-1.5">
-          {posts.map((p) => {
-            const video = videosById.get(p.video_id);
-            return video ? <PostCard key={p.id} post={p} video={video} /> : null;
-          })}
-        </div>
+        <button
+          onClick={() => handlers.onAdd({ date, platform })}
+          className="mt-1.5 hidden w-full rounded py-0.5 text-[11px] text-zinc-400 group-hover:block hover:bg-zinc-100 hover:text-zinc-600"
+        >
+          + Add
+        </button>
       )}
     </div>
   );

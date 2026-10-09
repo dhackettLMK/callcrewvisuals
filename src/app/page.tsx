@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Planner } from "@/components/planner";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { Post, Video } from "@/lib/types";
+import type { Attachment, Post, Video } from "@/lib/types";
 
 export default function Home() {
   return (
@@ -25,21 +25,20 @@ async function PlannerWithData() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [videos, posts] = await Promise.all([
+  const [videos, posts, attachments] = await Promise.all([
     supabase.from("videos").select("*").order("name"),
     supabase.from("posts").select("*"),
+    supabase.from("attachments").select("*"),
   ]);
 
-  if (videos.error || posts.error) {
-    throw new Error(
-      `Failed to load data: ${(videos.error ?? posts.error)!.message}`,
-    );
-  }
+  const error = videos.error ?? posts.error ?? attachments.error;
+  if (error) throw new Error(`Failed to load data: ${error.message}`);
 
   return (
     <Planner
       initialVideos={videos.data as Video[]}
       initialPosts={posts.data as Post[]}
+      initialAttachments={attachments.data as Attachment[]}
       userEmail={user.email ?? ""}
     />
   );

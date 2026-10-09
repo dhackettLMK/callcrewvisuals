@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { formatDuration } from "@/lib/dates";
 import { PLATFORM_BY_ID } from "@/lib/platforms";
 import type { Platform, Video } from "@/lib/types";
-import type { DragData } from "./planner";
+import type { DragData } from "./dnd";
 
 export function Thumbnail({
   video,
@@ -13,23 +14,47 @@ export function Thumbnail({
   video: Video;
   className?: string;
 }) {
+  const [broken, setBroken] = useState(false);
   return (
-    <div className={`relative overflow-hidden rounded bg-zinc-200 ${className}`}>
-      {video.thumbnail_url && (
-        // Plain <img>: thumbnails come from Drive/other hosts and are small.
+    <div
+      className={`relative overflow-hidden rounded bg-zinc-200 ${className}`}
+    >
+      {video.thumbnail_url && !broken ? (
+        // Plain <img>: Drive thumbnails are served by Google, not optimised here.
         <img
           src={video.thumbnail_url}
           alt=""
           draggable={false}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(true)}
           className="absolute inset-0 h-full w-full object-cover"
         />
+      ) : (
+        <FilmIcon className="absolute inset-0 m-auto h-6 w-6 text-zinc-400" />
       )}
       {video.duration_seconds != null && (
-        <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[10px] font-medium tabular-nums text-white">
+        <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[10px] font-medium text-white tabular-nums">
           {formatDuration(video.duration_seconds)}
         </span>
       )}
     </div>
+  );
+}
+
+export function FilmIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className={className}
+      aria-hidden
+    >
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M7 4v16M17 4v16M3 8h4M3 12h4M3 16h4M17 8h4M17 12h4M17 16h4" />
+    </svg>
   );
 }
 
@@ -38,7 +63,7 @@ export function VideoItem({
   scheduledOn,
 }: {
   video: Video;
-  /** Platforms of every post using this video (may repeat). */
+  /** Platforms of every live placeholder using this video (may repeat). */
   scheduledOn: Platform[];
 }) {
   const data: DragData = { type: "video", videoId: video.id };
@@ -58,10 +83,18 @@ export function VideoItem({
       }`}
     >
       <Thumbnail video={video} className="aspect-video w-32 shrink-0" />
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
         <p className="line-clamp-2 text-[13px] leading-snug font-medium text-zinc-800">
           {video.name}
         </p>
+        {video.folder_path && (
+          <p
+            className="truncate text-[11px] text-zinc-400"
+            title={video.folder_path}
+          >
+            {video.folder_path}
+          </p>
+        )}
         {scheduledOn.length > 0 ? (
           <span
             className="flex w-fit items-center gap-1 rounded-full bg-zinc-100 py-0.5 pr-2 pl-1.5 text-[11px] text-zinc-600"
