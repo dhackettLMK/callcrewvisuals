@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+}
+
+/* Empty calendar slots are hatched so gaps stand out at a glance. */
+.slot-empty {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    rgb(0 0 0 / 0.035) 6px 7px
+  );
+}
