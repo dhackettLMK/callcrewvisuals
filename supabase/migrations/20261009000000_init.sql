@@ -49,47 +49,47 @@ create trigger posts_set_updated_at
   for each row execute function public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
--- Access control: only signed-in users whose email is on an allowed company
--- domain can read or write anything. The app also checks the domain at sign-in,
--- but RLS is what actually protects the data (the anon key is public).
--- Add your domain after running this migration:
---   insert into public.allowed_domains (domain) values ('yourcompany.com');
+-- Access control: only signed-in users whose email is on the allowlist can
+-- read or write anything. The app also checks the allowlist at sign-in, but
+-- RLS is what actually protects the data (the publishable key is public).
+-- Add each allowed user after running this migration:
+--   insert into public.allowed_emails (email) values ('someone@example.com');
 -- ---------------------------------------------------------------------------
 
-create table public.allowed_domains (
-  domain text primary key check (domain = lower(domain))
+create table public.allowed_emails (
+  email text primary key check (email = lower(email))
 );
 
-alter table public.allowed_domains enable row level security;
+alter table public.allowed_emails enable row level security;
 -- No policies: not readable or writable through the API.
 
-create function public.is_company_user() returns boolean
+create function public.is_allowed_user() returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1
-    from public.allowed_domains d
-    where d.domain = lower(split_part(coalesce(auth.jwt() ->> 'email', ''), '@', 2))
+    from public.allowed_emails a
+    where a.email = lower(coalesce(auth.jwt() ->> 'email', ''))
   );
 $$;
 
-revoke execute on function public.is_company_user() from public, anon;
-grant execute on function public.is_company_user() to authenticated;
+revoke execute on function public.is_allowed_user() from public, anon;
+grant execute on function public.is_allowed_user() to authenticated;
 
 alter table public.videos enable row level security;
 alter table public.posts enable row level security;
 
-create policy "company users read videos" on public.videos
-  for select to authenticated using (public.is_company_user());
-create policy "company users write videos" on public.videos
+create policy "allowed users read videos" on public.videos
+  for select to authenticated using (public.is_allowed_user());
+create policy "allowed users write videos" on public.videos
   for all to authenticated
-  using (public.is_company_user()) with check (public.is_company_user());
+  using (public.is_allowed_user()) with check (public.is_allowed_user());
 
-create policy "company users read posts" on public.posts
-  for select to authenticated using (public.is_company_user());
-create policy "company users insert posts" on public.posts
-  for insert to authenticated with check (public.is_company_user());
-create policy "company users update posts" on public.posts
+create policy "allowed users read posts" on public.posts
+  for select to authenticated using (public.is_allowed_user());
+create policy "allowed users insert posts" on public.posts
+  for insert to authenticated with check (public.is_allowed_user());
+create policy "allowed users update posts" on public.posts
   for update to authenticated
-  using (public.is_company_user()) with check (public.is_company_user());
-create policy "company users delete posts" on public.posts
-  for delete to authenticated using (public.is_company_user());
+  using (public.is_allowed_user()) with check (public.is_allowed_user());
+create policy "allowed users delete posts" on public.posts
+  for delete to authenticated using (public.is_allowed_user());

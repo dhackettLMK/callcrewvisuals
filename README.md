@@ -9,9 +9,9 @@ Next.js (App Router) + TypeScript + Tailwind, Supabase (Postgres + Auth), dnd-ki
 
 1. Create a Supabase project.
 2. In the SQL editor, run `supabase/migrations/20261009000000_init.sql`.
-3. Allow your company domain (lowercase):
+3. Add each person who may sign in (lowercase):
    ```sql
-   insert into public.allowed_domains (domain) values ('yourcompany.com');
+   insert into public.allowed_emails (email) values ('someone@example.com');
    ```
 4. Load the sample videos: run `supabase/seed.sql`.
 
@@ -20,8 +20,9 @@ Next.js (App Router) + TypeScript + Tailwind, Supabase (Postgres + Auth), dnd-ki
 1. In Google Cloud Console → APIs & Services → Credentials, create an
    **OAuth client ID** (type: Web application).
    - Authorized redirect URI: `https://<your-project>.supabase.co/auth/v1/callback`
-   - If your Google Workspace allows it, set the OAuth consent screen to
-     **Internal** so only your organisation can use it.
+   - On the OAuth consent screen, choose **External** and leave it in
+     **Testing**. Add every allowed email under **Test users**; Google then
+     refuses sign-in for anyone else before they even reach the app.
 2. In Supabase → Authentication → Sign In / Providers → **Google**: enable it and
    paste the client ID and secret.
 3. In Supabase → Authentication → URL Configuration:
@@ -37,7 +38,7 @@ Copy `.env.example` to `.env.local` and fill it in:
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API Keys (publishable / anon key) |
-| `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` | Your Google Workspace domain, e.g. `yourcompany.com` |
+| `ALLOWED_EMAILS` | Comma-separated Google accounts that may sign in |
 
 ### 4. Run
 
@@ -50,11 +51,13 @@ Open http://localhost:3000.
 
 ## How access is restricted
 
-- The Google account picker is limited to your domain (`hd` parameter; a hint only).
-- `/auth/callback` and `src/proxy.ts` sign out anyone whose email isn't on
-  `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN`.
-- Row Level Security only lets users whose email domain is in
-  `public.allowed_domains` read or write data. This is the real protection,
+To give someone access, add their email in all three places below.
+
+- While the Google OAuth app is in Testing, only its listed test users can sign in.
+- `/auth/callback` and `src/proxy.ts` sign out anyone whose email isn't in
+  `ALLOWED_EMAILS`.
+- Row Level Security only lets users whose email is in
+  `public.allowed_emails` read or write data. This is the real protection,
   since the publishable key is public.
 
 ## Deploying to Vercel

@@ -42,7 +42,7 @@ export async function proxy(request: NextRequest) {
     await supabase.auth.signOut();
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.search = "?error=domain";
+    url.search = "?error=not_allowed";
     const redirect = NextResponse.redirect(url);
     response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
     return redirect;

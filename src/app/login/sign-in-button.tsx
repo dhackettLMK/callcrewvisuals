@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ALLOWED_DOMAIN } from "@/lib/auth";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const ERRORS: Record<string, string> = {
-  domain: `Only @${ALLOWED_DOMAIN} Google accounts can sign in.`,
+  not_allowed: "This Google account doesn't have access.",
   auth: "Sign-in failed. Please try again.",
 };
 
@@ -20,9 +19,7 @@ export function SignInButton() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        // `hd` limits Google's account picker to the company domain. It is
-        // only a hint; the domain is enforced server-side and in RLS.
-        queryParams: { hd: ALLOWED_DOMAIN, prompt: "select_account" },
+        queryParams: { prompt: "select_account" },
       },
     });
     if (error) setPending(false);

@@ -1,9 +1,11 @@
-/** The Google Workspace domain allowed to sign in, e.g. "yourcompany.com". */
-export const ALLOWED_DOMAIN = (
-  process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN ?? ""
-).toLowerCase();
+/** Emails allowed to sign in, from ALLOWED_EMAILS (comma-separated). */
+const ALLOWED_EMAILS = new Set(
+  (process.env.ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 export function isAllowedEmail(email: string | null | undefined): boolean {
-  if (!email || !ALLOWED_DOMAIN) return false;
-  return email.toLowerCase().split("@")[1] === ALLOWED_DOMAIN;
+  return !!email && ALLOWED_EMAILS.has(email.toLowerCase());
 }

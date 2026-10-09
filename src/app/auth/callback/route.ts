@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   if (!isAllowedEmail(data.user.email)) {
     await supabase.auth.signOut();
-    return NextResponse.redirect(`${origin}/login?error=domain`);
+    return NextResponse.redirect(`${origin}/login?error=not_allowed`);
   }
 
   return NextResponse.redirect(`${origin}/`);
